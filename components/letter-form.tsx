@@ -327,9 +327,10 @@ export function LetterForm() {
                                     <option
                                         key={item.code}
                                         value={item.code}
-                                        className={item.type === 'main' ? 'font-bold bg-slate-50' : 'pl-4'}
+                                        className={item.type === 'main' ? 'font-bold bg-slate-100 text-slate-900' : 'pl-4 text-slate-600'}
+                                        disabled={item.type === 'main'} // Optional: Disable main categories if they shouldn't be selected
                                     >
-                                        {item.label}
+                                        {item.code} - {item.label}
                                     </option>
                                 ))}
                             </select>

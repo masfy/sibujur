@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 interface ChartData {
     month: string;
@@ -17,9 +17,15 @@ interface DashboardChartProps {
 
 export function DashboardChart({ data, className, hideTitle = false }: DashboardChartProps) {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const maxValue = useMemo(() => {
-        return Math.max(...data.map(d => Math.max(d.masuk, d.keluar)), 5); // Min max 5
+        if (!data || data.length === 0) return 10;
+        return Math.max(...data.map(d => Math.max(d.masuk, d.keluar)), 5);
     }, [data]);
 
     // Helper to calculate Y position
@@ -36,46 +42,22 @@ export function DashboardChart({ data, className, hideTitle = false }: Dashboard
         return (index / (data.length - 1)) * width;
     };
 
-    // Generate smooth path
-    const generatePath = (type: 'masuk' | 'keluar') => {
-        if (data.length === 0) return "";
-
-        const points = data.map((d, i) => ({
-            x: getX(i),
-            y: getY(type === 'masuk' ? d.masuk : d.keluar)
-        }));
-
-        let path = `M 0,${points[0].y}`;
-
-        for (let i = 0; i < points.length - 1; i++) {
-            const p0 = points[i];
-            const p1 = points[i + 1];
-            const cp1x = p0.x + (p1.x - p0.x) / 2;
-            const cp1y = p0.y;
-            const cp2x = p0.x + (p1.x - p0.x) / 2;
-            const cp2y = p1.y;
-
-            // Using percentage for X, pixels for Y is tricky in SVG path d attribute if viewBox is not set correctly.
-            // Let's assume viewBox width is 1000 for easier calculation.
-            // Re-calculating points based on 1000 width.
-        }
-        return "";
-    };
-
     // Simplified Path Generation with fixed viewBox width 1000
     const width = 1000;
     const height = 200;
 
     const getPoint = (index: number, value: number) => {
+        if (data.length <= 1) return { x: 0, y: height };
         const x = (index / (data.length - 1)) * width;
         const y = height - (value / maxValue) * height; // Removed bottom padding completely
         return { x, y };
     };
 
     const makePath = (type: 'masuk' | 'keluar') => {
-        if (data.length === 0) return "";
+        if (!data || data.length === 0) return "";
         const points = data.map((d, i) => getPoint(i, type === 'masuk' ? d.masuk : d.keluar));
 
+        if (points.length === 0) return "";
         let d = `M ${points[0].x},${points[0].y}`;
 
         for (let i = 0; i < points.length - 1; i++) {
@@ -91,8 +73,11 @@ export function DashboardChart({ data, className, hideTitle = false }: Dashboard
 
     const makeArea = (type: 'masuk' | 'keluar') => {
         const linePath = makePath(type);
+        if (!linePath) return "";
         return `${linePath} L ${width},${height} L 0,${height} Z`;
     };
+
+    if (!mounted) return <div className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-full flex flex-col ${className || ""}`} />;
 
     return (
         <div className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-full flex flex-col ${className || ""}`}>
@@ -214,7 +199,7 @@ export function DashboardChart({ data, className, hideTitle = false }: Dashboard
                 </svg>
 
                 {/* Tooltip */}
-                {hoveredIndex !== null && (
+                {hoveredIndex !== null && data[hoveredIndex] && (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
